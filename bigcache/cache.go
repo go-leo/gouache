@@ -1,3 +1,8 @@
+// Package bigcache provides an implementation of the gouache.Cache interface
+// using allegro/bigcache as the underlying storage mechanism.
+//
+// This package enables high-performance caching capabilities by leveraging
+// BigCache's efficient memory management and concurrent access patterns.
 package bigcache
 
 import (
@@ -8,10 +13,12 @@ import (
 	"github.com/go-leo/gouache"
 )
 
-// Ensure that Cache implements the gouache.Cache interface.
+// Ensure that Cache implements the gouache.Cache interface at compile time.
 var _ gouache.Cache = (*Cache)(nil)
 
 // Cache is an implementation of gouache.Cache using BigCache as the storage backend.
+// It provides methods for storing, retrieving, and deleting cached values with
+// support for custom serialization and deserialization functions.
 type Cache struct {
 	// BigCache is the underlying BigCache instance used for storage.
 	BigCache *bigcache.BigCache
@@ -27,6 +34,14 @@ type Cache struct {
 
 // Get retrieves a value from the cache by its key.
 // It returns gouache.ErrNil if the key does not exist.
+//
+// Parameters:
+//   - ctx: Context for the operation
+//   - key: The key to retrieve the value for
+//
+// Returns:
+//   - The cached value or nil if not found
+//   - An error if the operation fails, or gouache.ErrNil if key doesn't exist
 func (store *Cache) Get(ctx context.Context, key string) (any, error) {
 	// Attempt to get the value from BigCache
 	data, err := store.BigCache.Get(key)
@@ -57,6 +72,14 @@ func (store *Cache) Get(ctx context.Context, key string) (any, error) {
 
 // Set stores a value in the cache with the given key.
 // It supports various basic types when no Marshal function is provided.
+//
+// Parameters:
+//   - ctx: Context for the operation
+//   - key: The key to store the value under
+//   - val: The value to store
+//
+// Returns:
+//   - An error if the operation fails
 func (store *Cache) Set(ctx context.Context, key string, val any) error {
 	// If no custom marshal function is provided, use built-in type handling
 	if store.Marshal == nil {
@@ -79,6 +102,13 @@ func (store *Cache) Set(ctx context.Context, key string, val any) error {
 }
 
 // Delete removes a value from the cache by its key.
+//
+// Parameters:
+//   - ctx: Context for the operation
+//   - key: The key of the value to delete
+//
+// Returns:
+//   - An error if the operation fails
 func (store *Cache) Delete(ctx context.Context, key string) error {
 	// Delegate deletion to the underlying BigCache instance
 	return store.BigCache.Delete(key)
