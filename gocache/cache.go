@@ -1,4 +1,4 @@
-package gocachex
+package gocache
 
 import (
 	"context"
@@ -10,11 +10,9 @@ import (
 
 var _ gouache.Cache = (*Cache)(nil)
 
-// Cache TTL缓存
 type Cache struct {
 	Cache *cache.Cache
-	// 过期时间
-	TTL func(ctx context.Context, key string) time.Duration
+	TTL   func(ctx context.Context, key string, val any) (time.Duration, error)
 }
 
 func (store *Cache) Get(ctx context.Context, key string) (any, error) {
@@ -26,11 +24,14 @@ func (store *Cache) Get(ctx context.Context, key string) (any, error) {
 }
 
 func (store *Cache) Set(ctx context.Context, key string, val any) error {
-	ttl := cache.DefaultExpiration
 	if store.TTL != nil {
-		ttl = store.TTL(ctx, key)
+		ttl, err := store.TTL(ctx, key, val)
+		if err != nil {
+			return err
+		}
+		store.Cache.Set(key, val, ttl)
 	}
-	store.Cache.Set(key, val, ttl)
+	store.Cache.Set(key, val, cache.DefaultExpiration)
 	return nil
 }
 
