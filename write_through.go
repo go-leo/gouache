@@ -4,10 +4,6 @@ import (
 	"context"
 )
 
-type Updater interface {
-	Update(ctx context.Context, key string, val any) error
-}
-
 var _ Cache = (*WriteThroughCache)(nil)
 
 type WriteThroughCache struct {

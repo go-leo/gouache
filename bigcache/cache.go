@@ -20,8 +20,8 @@ var _ gouache.Cache = (*Cache)(nil)
 // It provides methods for storing, retrieving, and deleting cached values with
 // support for custom serialization and deserialization functions.
 type Cache struct {
-	// BigCache is the underlying BigCache instance used for storage.
-	BigCache *bigcache.BigCache
+	// Cache is the underlying Cache instance used for storage.
+	Cache *bigcache.BigCache
 
 	// Marshal is an optional function to serialize objects into bytes.
 	// If not provided, default type conversions are used for basic types.
@@ -33,7 +33,7 @@ type Cache struct {
 }
 
 // Get retrieves a value from the cache by its key.
-// It returns gouache.ErrNil if the key does not exist.
+// It returns gouache.ErrCacheMiss if the key does not exist.
 //
 // Parameters:
 //   - ctx: Context for the operation
@@ -41,14 +41,14 @@ type Cache struct {
 //
 // Returns:
 //   - The cached value or nil if not found
-//   - An error if the operation fails, or gouache.ErrNil if key doesn't exist
+//   - An error if the operation fails, or gouache.ErrCacheMiss if key doesn't exist
 func (store *Cache) Get(ctx context.Context, key string) (any, error) {
 	// Attempt to get the value from BigCache
-	data, err := store.BigCache.Get(key)
+	data, err := store.Cache.Get(key)
 
 	// Handle case where entry is not found
 	if errors.Is(err, bigcache.ErrEntryNotFound) {
-		return nil, gouache.ErrNil
+		return nil, gouache.ErrCacheMiss
 	}
 
 	// Return other errors as-is
@@ -70,35 +70,36 @@ func (store *Cache) Get(ctx context.Context, key string) (any, error) {
 	return obj, nil
 }
 
-// Set stores a value in the cache with the given key.
-// It supports various basic types when no Marshal function is provided.
+// Set stores a value in the cache under the specified key.
+// It handles both raw byte slices and custom objects that require marshaling.
 //
 // Parameters:
 //   - ctx: Context for the operation
-//   - key: The key to store the value under
-//   - val: The value to store
+//   - key: The key under which the value will be stored
+//   - val: The value to store, either as []byte or any other type requiring marshaling
 //
 // Returns:
-//   - An error if the operation fails
+//   - An error if the operation fails, including when Marshal is nil for non-byte values
 func (store *Cache) Set(ctx context.Context, key string, val any) error {
-	// If no custom marshal function is provided, use built-in type handling
-	if store.Marshal == nil {
-		switch val := val.(type) {
-		case []byte:
-			return store.BigCache.Set(key, val)
-		default:
-			return errors.New("bigcache: val is not []byte")
-		}
+	// Check if the value is already a byte slice
+	if data, ok := val.([]byte); ok {
+		// Directly store byte slices without marshaling
+		return store.Cache.Set(key, data)
 	}
 
-	// Use custom marshal function to encode the value
+	// For non-byte values, ensure a marshal function is available
+	if store.Marshal == nil {
+		return errors.New("gouache: Marshal is nil")
+	}
+
+	// Marshal the value into bytes using the custom marshal function
 	data, err := store.Marshal(key, val)
 	if err != nil {
 		return err
 	}
 
-	// Store the encoded data in BigCache
-	return store.BigCache.Set(key, data)
+	// Store the marshaled data in BigCache
+	return store.Cache.Set(key, data)
 }
 
 // Delete removes a value from the cache by its key.
@@ -111,5 +112,5 @@ func (store *Cache) Set(ctx context.Context, key string, val any) error {
 //   - An error if the operation fails
 func (store *Cache) Delete(ctx context.Context, key string) error {
 	// Delegate deletion to the underlying BigCache instance
-	return store.BigCache.Delete(key)
+	return store.Cache.Delete(key)
 }

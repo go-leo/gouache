@@ -29,7 +29,7 @@ type Cache struct {
 }
 
 // Get retrieves a value from the cache by its key.
-// It returns gouache.ErrNil if the key does not exist or has expired.
+// It returns gouache.ErrCacheMiss if the key does not exist or has expired.
 //
 // Parameters:
 //   - ctx: Context for the operation
@@ -37,44 +37,50 @@ type Cache struct {
 //
 // Returns:
 //   - The cached value or nil if not found
-//   - An error if the operation fails, or gouache.ErrNil if key doesn't exist
+//   - An error if the operation fails, or gouache.ErrCacheMiss if key doesn't exist
 func (store *Cache) Get(ctx context.Context, key string) (any, error) {
 	// Attempt to get the value from the go-cache
 	val, ok := store.Cache.Get(key)
-	
+
 	// Handle case where entry is not found or has expired
 	if !ok {
-		return nil, gouache.ErrNil
+		return nil, gouache.ErrCacheMiss
 	}
-	
+
 	// Return the found value
 	return val, nil
 }
 
-// Set stores a value in the cache with the given key.
-// The TTL function can be used to determine a custom expiration time for the entry.
+// Set stores a value in the cache under the specified key with an optional TTL.
+// The TTL (time-to-live) can be determined dynamically by the TTL function if provided,
+// otherwise uses the default expiration behavior of go-cache.
 //
 // Parameters:
-//   - ctx: Context for the operation
-//   - key: The key to store the value under
-//   - val: The value to store
+//   - ctx: Context for the operation, passed to the TTL function if configured
+//   - key: The key under which the value will be stored
+//   - val: The value to store in the cache
 //
 // Returns:
-//   - An error if the TTL function fails, nil otherwise
+//   - An error if the TTL function (if configured) returns an error, otherwise nil
 func (store *Cache) Set(ctx context.Context, key string, val any) error {
-	// If a TTL function is provided, use it to determine expiration
+	// Initialize TTL to default expiration value
+	ttl := cache.DefaultExpiration
+
+	// Check if a custom TTL function is configured
 	if store.TTL != nil {
-		ttl, err := store.TTL(ctx, key, val)
+		// Use the TTL function to determine expiration duration
+		var err error
+		ttl, err = store.TTL(ctx, key, val)
 		if err != nil {
 			return err
 		}
-		// Set the value with the custom TTL
+		// Store the value with the computed TTL
 		store.Cache.Set(key, val, ttl)
 		return nil
 	}
-	
-	// Use default expiration behavior
-	store.Cache.Set(key, val, cache.DefaultExpiration)
+
+	// Store the value with default expiration
+	store.Cache.Set(key, val, ttl)
 	return nil
 }
 

@@ -65,8 +65,8 @@ func TestCache_GetNonExistentKey(t *testing.T) {
 
 	// Test Get with non-existent key
 	_, err := cacheImpl.Get(ctx, key)
-	if err != gouache.ErrNil {
-		t.Errorf("Expected gouache.ErrNil, got %v", err)
+	if err != gouache.ErrCacheMiss {
+		t.Errorf("Expected gouache.ErrCacheMiss, got %v", err)
 	}
 }
 
@@ -96,8 +96,8 @@ func TestCache_Delete(t *testing.T) {
 
 	// Try to get the deleted value
 	_, err = cacheImpl.Get(ctx, key)
-	if err != gouache.ErrNil {
-		t.Errorf("Expected gouache.ErrNil after deletion, got %v", err)
+	if err != gouache.ErrCacheMiss {
+		t.Errorf("Expected gouache.ErrCacheMiss after deletion, got %v", err)
 	}
 }
 
@@ -156,8 +156,8 @@ func TestCache_ExpiredKey(t *testing.T) {
 
 	// Try to get the expired value
 	_, err = cacheImpl.Get(ctx, key)
-	if err != gouache.ErrNil {
-		t.Errorf("Expected gouache.ErrNil for expired key, got %v", err)
+	if err != gouache.ErrCacheMiss {
+		t.Errorf("Expected gouache.ErrCacheMiss for expired key, got %v", err)
 	}
 }
 

@@ -16,10 +16,10 @@ func TestNewCache(t *testing.T) {
 	}
 
 	cache := &Cache{
-		LRUCache: lruCache,
+		Cache: lruCache,
 	}
 
-	if cache.LRUCache == nil {
+	if cache.Cache == nil {
 		t.Error("LRUCache should not be nil")
 	}
 }
@@ -32,7 +32,7 @@ func TestCache_GetSet(t *testing.T) {
 	}
 
 	cache := &Cache{
-		LRUCache: lruCache,
+		Cache: lruCache,
 	}
 
 	ctx := context.Background()
@@ -64,7 +64,7 @@ func TestCache_GetNonExistentKey(t *testing.T) {
 	}
 
 	cache := &Cache{
-		LRUCache: lruCache,
+		Cache: lruCache,
 	}
 
 	ctx := context.Background()
@@ -72,8 +72,8 @@ func TestCache_GetNonExistentKey(t *testing.T) {
 
 	// Test Get with non-existent key
 	_, err = cache.Get(ctx, key)
-	if err != gouache.ErrNil {
-		t.Errorf("Expected gouache.ErrNil, got %v", err)
+	if err != gouache.ErrCacheMiss {
+		t.Errorf("Expected gouache.ErrCacheMiss, got %v", err)
 	}
 }
 
@@ -85,7 +85,7 @@ func TestCache_Delete(t *testing.T) {
 	}
 
 	cache := &Cache{
-		LRUCache: lruCache,
+		Cache: lruCache,
 	}
 
 	ctx := context.Background()
@@ -106,8 +106,8 @@ func TestCache_Delete(t *testing.T) {
 
 	// Try to get the deleted value
 	_, err = cache.Get(ctx, key)
-	if err != gouache.ErrNil {
-		t.Errorf("Expected gouache.ErrNil after deletion, got %v", err)
+	if err != gouache.ErrCacheMiss {
+		t.Errorf("Expected gouache.ErrCacheMiss after deletion, got %v", err)
 	}
 }
 
@@ -120,7 +120,7 @@ func TestCache_LRU_Eviction(t *testing.T) {
 	}
 
 	cache := &Cache{
-		LRUCache: lruCache,
+		Cache: lruCache,
 	}
 
 	ctx := context.Background()
@@ -143,8 +143,8 @@ func TestCache_LRU_Eviction(t *testing.T) {
 
 	// key1 should have been evicted (least recently used)
 	_, err = cache.Get(ctx, "key1")
-	if err != gouache.ErrNil {
-		t.Errorf("Expected gouache.ErrNil for evicted key, got %v", err)
+	if err != gouache.ErrCacheMiss {
+		t.Errorf("Expected gouache.ErrCacheMiss for evicted key, got %v", err)
 	}
 
 	// key2 and key3 should still be present
@@ -168,7 +168,7 @@ func TestCache_LRU_AccessOrder(t *testing.T) {
 	}
 
 	cache := &Cache{
-		LRUCache: lruCache,
+		Cache: lruCache,
 	}
 
 	ctx := context.Background()
@@ -204,8 +204,8 @@ func TestCache_LRU_AccessOrder(t *testing.T) {
 
 	// key2 should have been evicted
 	_, err = cache.Get(ctx, "key2")
-	if err != gouache.ErrNil {
-		t.Errorf("Expected gouache.ErrNil for evicted key2, got %v", err)
+	if err != gouache.ErrCacheMiss {
+		t.Errorf("Expected gouache.ErrCacheMiss for evicted key2, got %v", err)
 	}
 
 	// key3 should still be present

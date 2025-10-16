@@ -2,77 +2,91 @@ package gouache
 
 import (
 	"context"
-	"crypto/rand"
+	"encoding/binary"
 	"hash"
-	"math"
-	"math/big"
-	insecurerand "math/rand"
+	"hash/fnv"
 )
 
 var _ Cache = (*shardedCache)(nil)
 
+type HashFactory func(ctx context.Context, key string) (hash.Hash, error)
+
 type shardedCache struct {
-	stores []Cache
-	seed   uint32
-	hash32 hash.Hash32
-	hash64 hash.Hash64
+	Options *shardedOptions
+	Buckets []Cache
 }
 
-func ShardedCache(stores []Cache) Cache {
-	rnd, err := rand.Int(rand.Reader, big.NewInt(0).SetUint64(uint64(math.MaxUint32)))
-	var seed uint32
-	if err != nil {
-		seed = insecurerand.Uint32()
-	} else {
-		seed = uint32(rnd.Uint64())
+type shardedOptions struct {
+	HashFactory HashFactory
+}
+
+type ShardedOption func(*shardedOptions)
+
+func WithHashFactory(hashFactory HashFactory) ShardedOption {
+	return func(o *shardedOptions) {
+		o.HashFactory = hashFactory
 	}
-	return &shardedCache{stores: stores, seed: seed}
+}
+
+func newShardedOptions(opts ...ShardedOption) *shardedOptions {
+	options := &shardedOptions{}
+	return options.Apply(opts...).Correct()
+}
+
+func (o *shardedOptions) Apply(opts ...ShardedOption) *shardedOptions {
+	for _, opt := range opts {
+		opt(o)
+	}
+	return o
+}
+
+func (o *shardedOptions) Correct() *shardedOptions {
+	if o.HashFactory == nil {
+		o.HashFactory = func(ctx context.Context, key string) (hash.Hash, error) {
+			return fnv.New32a(), nil
+		}
+	}
+	return o
+}
+
+func ShardedCache(buckets []Cache, opts ...ShardedOption) Cache {
+	if len(buckets) == 0 {
+		panic("gouache: buckets is empty")
+	}
+	return &shardedCache{Options: newShardedOptions(opts...), Buckets: buckets}
 }
 
 func (store *shardedCache) Get(ctx context.Context, key string) (any, error) {
-	return store.bucket(key).Get(ctx, key)
+	return store.bucket(ctx, key).Get(ctx, key)
 }
 
 func (store *shardedCache) Set(ctx context.Context, key string, val any) error {
-	return store.bucket(key).Set(ctx, key, val)
+	return store.bucket(ctx, key).Set(ctx, key, val)
 }
 
 func (store *shardedCache) Delete(ctx context.Context, key string) error {
-	return store.bucket(key).Delete(ctx, key)
+	return store.bucket(ctx, key).Delete(ctx, key)
 }
 
-func (store *shardedCache) bucket(k string) Cache {
-	return store.stores[int(store.djb33(k))%len(store.stores)]
-}
-
-// djb2 with better shuffling. 5x faster than FNV with the hash.Hash overhead.
-func (store *shardedCache) djb33(k string) uint32 {
-	var (
-		l = uint32(len(k))
-		d = 5381 + store.seed + l
-		i = uint32(0)
-	)
-	// Why is all this 5x faster than a for loop?
-	if l >= 4 {
-		for i < l-4 {
-			d = (d * 33) ^ uint32(k[i])
-			d = (d * 33) ^ uint32(k[i+1])
-			d = (d * 33) ^ uint32(k[i+2])
-			d = (d * 33) ^ uint32(k[i+3])
-			i += 4
-		}
+func (cache *shardedCache) bucket(ctx context.Context, key string) Cache {
+	h, err := cache.Options.HashFactory(ctx, key)
+	if err != nil {
+		return nil
 	}
-	switch l - i {
-	case 1:
-	case 2:
-		d = (d * 33) ^ uint32(k[i])
-	case 3:
-		d = (d * 33) ^ uint32(k[i])
-		d = (d * 33) ^ uint32(k[i+1])
+	h.Write([]byte(key))
+	switch h.Size() {
 	case 4:
-		d = (d * 33) ^ uint32(k[i])
-		d = (d * 33) ^ uint32(k[i+1])
-		d = (d * 33) ^ uint32(k[i+2])
+		sum32 := int(h.(hash.Hash32).Sum32())
+		return cache.Buckets[sum32%len(cache.Buckets)]
+	case 8:
+		sum64 := int(h.(hash.Hash64).Sum64())
+		return cache.Buckets[sum64%len(cache.Buckets)]
+	default:
+		sum := h.Sum(nil)
+		if len(sum) < 4 {
+			return cache.Buckets[0]
+		}
+		sum32 := int(binary.BigEndian.Uint32(sum[:4]))
+		return cache.Buckets[sum32%len(cache.Buckets)]
 	}
-	return d ^ (d >> 16)
 }

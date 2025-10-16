@@ -20,10 +20,10 @@ func TestNewCache(t *testing.T) {
 	}
 
 	cache := &Cache{
-		BigCache: bigCache,
+		Cache: bigCache,
 	}
 
-	if cache.BigCache == nil {
+	if cache.Cache == nil {
 		t.Error("BigCache should not be nil")
 	}
 }
@@ -37,7 +37,7 @@ func TestCache_GetSet(t *testing.T) {
 	}
 
 	cache := &Cache{
-		BigCache: bigCache,
+		Cache: bigCache,
 		Marshal: func(key string, obj any) ([]byte, error) {
 			return json.Marshal(obj)
 		},
@@ -78,7 +78,7 @@ func TestCache_GetNonExistentKey(t *testing.T) {
 	}
 
 	cache := &Cache{
-		BigCache: bigCache,
+		Cache: bigCache,
 	}
 
 	ctx := context.Background()
@@ -86,8 +86,8 @@ func TestCache_GetNonExistentKey(t *testing.T) {
 
 	// Test Get with non-existent key
 	_, err = cache.Get(ctx, key)
-	if !errors.Is(err, gouache.ErrNil) {
-		t.Errorf("Expected gouache.ErrNil, got %v", err)
+	if !errors.Is(err, gouache.ErrCacheMiss) {
+		t.Errorf("Expected gouache.ErrCacheMiss, got %v", err)
 	}
 }
 
@@ -100,7 +100,7 @@ func TestCache_Delete(t *testing.T) {
 	}
 
 	cache := &Cache{
-		BigCache: bigCache,
+		Cache: bigCache,
 		Marshal: func(key string, obj any) ([]byte, error) {
 			return json.Marshal(obj)
 		},
@@ -124,8 +124,8 @@ func TestCache_Delete(t *testing.T) {
 
 	// Try to get the deleted value
 	_, err = cache.Get(ctx, key)
-	if !errors.Is(err, gouache.ErrNil) {
-		t.Errorf("Expected gouache.ErrNil after deletion, got %v", err)
+	if !errors.Is(err, gouache.ErrCacheMiss) {
+		t.Errorf("Expected gouache.ErrCacheMiss after deletion, got %v", err)
 	}
 }
 
@@ -138,7 +138,7 @@ func TestCache_SetWithoutMarshal(t *testing.T) {
 	}
 
 	cache := &Cache{
-		BigCache: bigCache,
+		Cache: bigCache,
 	}
 
 	ctx := context.Background()
@@ -171,7 +171,7 @@ func TestCache_SetUnsupportedTypeWithoutMarshal(t *testing.T) {
 	}
 
 	cache := &Cache{
-		BigCache: bigCache,
+		Cache: bigCache,
 	}
 
 	ctx := context.Background()
@@ -194,7 +194,7 @@ func TestCache_GetWithoutUnmarshal(t *testing.T) {
 	}
 
 	cache := &Cache{
-		BigCache: bigCache,
+		Cache: bigCache,
 		Marshal: func(key string, obj any) ([]byte, error) {
 			return obj.([]byte), nil
 		},

@@ -19,12 +19,12 @@ var _ gouache.Cache = (*Cache)(nil)
 // It provides methods for storing, retrieving, and deleting cached values with
 // LRU eviction policy when the cache reaches its capacity.
 type Cache struct {
-	// LRUCache is the underlying LRU cache instance used for storage.
-	LRUCache *lru.Cache
+	// Cache is the underlying LRU cache instance used for storage.
+	Cache *lru.Cache
 }
 
 // Get retrieves a value from the cache by its key.
-// It returns gouache.ErrNil if the key does not exist.
+// It returns gouache.ErrCacheMiss if the key does not exist.
 //
 // Parameters:
 //   - ctx: Context for the operation
@@ -32,16 +32,16 @@ type Cache struct {
 //
 // Returns:
 //   - The cached value or nil if not found
-//   - An error if the operation fails, or gouache.ErrNil if key doesn't exist
+//   - An error if the operation fails, or gouache.ErrCacheMiss if key doesn't exist
 func (store *Cache) Get(ctx context.Context, key string) (any, error) {
 	// Attempt to get the value from the LRU cache
-	val, ok := store.LRUCache.Get(key)
-	
+	val, ok := store.Cache.Get(key)
+
 	// Handle case where entry is not found
 	if !ok {
-		return nil, gouache.ErrNil
+		return nil, gouache.ErrCacheMiss
 	}
-	
+
 	// Return the found value
 	return val, nil
 }
@@ -57,7 +57,7 @@ func (store *Cache) Get(ctx context.Context, key string) (any, error) {
 //   - Always returns nil as LRU cache Add operation is always successful
 func (store *Cache) Set(ctx context.Context, key string, val any) error {
 	// Add the value to the LRU cache
-	_ = store.LRUCache.Add(key, val)
+	_ = store.Cache.Add(key, val)
 	return nil
 }
 
@@ -71,6 +71,6 @@ func (store *Cache) Set(ctx context.Context, key string, val any) error {
 //   - Always returns nil as LRU cache Remove operation doesn't return errors
 func (store *Cache) Delete(ctx context.Context, key string) error {
 	// Remove the value from the LRU cache
-	_ = store.LRUCache.Remove(key)
+	_ = store.Cache.Remove(key)
 	return nil
 }
