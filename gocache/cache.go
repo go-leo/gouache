@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/go-leo/gouache"
-	"github.com/patrickmn/go-cache"
+	gocache "github.com/patrickmn/go-cache"
 )
 
 // Ensure that Cache implements the gouache.Cache interface at compile time.
@@ -21,7 +21,7 @@ var _ gouache.Cache = (*Cache)(nil)
 // support for configurable time-to-live (TTL) settings.
 type Cache struct {
 	// Cache is the underlying go-cache instance used for storage.
-	Cache *cache.Cache
+	Cache *gocache.Cache
 
 	// TTL is an optional function to determine the time-to-live duration for a cache entry.
 	// If not provided, the default expiration behavior of go-cache is used.
@@ -38,9 +38,9 @@ type Cache struct {
 // Returns:
 //   - The cached value or nil if not found
 //   - An error if the operation fails, or gouache.ErrCacheMiss if key doesn't exist
-func (store *Cache) Get(ctx context.Context, key string) (any, error) {
+func (cache *Cache) Get(ctx context.Context, key string) (any, error) {
 	// Attempt to get the value from the go-cache
-	val, ok := store.Cache.Get(key)
+	val, ok := cache.Cache.Get(key)
 
 	// Handle case where entry is not found or has expired
 	if !ok {
@@ -62,25 +62,25 @@ func (store *Cache) Get(ctx context.Context, key string) (any, error) {
 //
 // Returns:
 //   - An error if the TTL function (if configured) returns an error, otherwise nil
-func (store *Cache) Set(ctx context.Context, key string, val any) error {
+func (cache *Cache) Set(ctx context.Context, key string, val any) error {
 	// Initialize TTL to default expiration value
-	ttl := cache.DefaultExpiration
+	ttl := gocache.DefaultExpiration
 
 	// Check if a custom TTL function is configured
-	if store.TTL != nil {
+	if cache.TTL != nil {
 		// Use the TTL function to determine expiration duration
 		var err error
-		ttl, err = store.TTL(ctx, key, val)
+		ttl, err = cache.TTL(ctx, key, val)
 		if err != nil {
 			return err
 		}
 		// Store the value with the computed TTL
-		store.Cache.Set(key, val, ttl)
+		cache.Cache.Set(key, val, ttl)
 		return nil
 	}
 
 	// Store the value with default expiration
-	store.Cache.Set(key, val, ttl)
+	cache.Cache.Set(key, val, ttl)
 	return nil
 }
 
@@ -92,8 +92,8 @@ func (store *Cache) Set(ctx context.Context, key string, val any) error {
 //
 // Returns:
 //   - Always returns nil as go-cache.Delete doesn't return errors
-func (store *Cache) Delete(ctx context.Context, key string) error {
+func (cache *Cache) Delete(ctx context.Context, key string) error {
 	// Delegate deletion to the underlying go-cache instance
-	store.Cache.Delete(key)
+	cache.Cache.Delete(key)
 	return nil
 }

@@ -42,9 +42,9 @@ type Cache struct {
 // Returns:
 //   - The cached value or nil if not found
 //   - An error if the operation fails, or gouache.ErrCacheMiss if key doesn't exist
-func (store *Cache) Get(ctx context.Context, key string) (any, error) {
+func (cache *Cache) Get(ctx context.Context, key string) (any, error) {
 	// Attempt to get the value from BigCache
-	data, err := store.Cache.Get(key)
+	data, err := cache.Cache.Get(key)
 
 	// Handle case where entry is not found
 	if errors.Is(err, bigcache.ErrEntryNotFound) {
@@ -57,12 +57,12 @@ func (store *Cache) Get(ctx context.Context, key string) (any, error) {
 	}
 
 	// If no unmarshal function is defined, return raw data
-	if store.Unmarshal == nil {
+	if cache.Unmarshal == nil {
 		return data, nil
 	}
 
 	// Use custom unmarshal function to decode the data
-	obj, err := store.Unmarshal(key, data)
+	obj, err := cache.Unmarshal(key, data)
 	if err != nil {
 		return nil, err
 	}
@@ -80,26 +80,26 @@ func (store *Cache) Get(ctx context.Context, key string) (any, error) {
 //
 // Returns:
 //   - An error if the operation fails, including when Marshal is nil for non-byte values
-func (store *Cache) Set(ctx context.Context, key string, val any) error {
+func (cache *Cache) Set(ctx context.Context, key string, val any) error {
 	// Check if the value is already a byte slice
 	if data, ok := val.([]byte); ok {
 		// Directly store byte slices without marshaling
-		return store.Cache.Set(key, data)
+		return cache.Cache.Set(key, data)
 	}
 
 	// For non-byte values, ensure a marshal function is available
-	if store.Marshal == nil {
+	if cache.Marshal == nil {
 		return errors.New("gouache: Marshal is nil")
 	}
 
 	// Marshal the value into bytes using the custom marshal function
-	data, err := store.Marshal(key, val)
+	data, err := cache.Marshal(key, val)
 	if err != nil {
 		return err
 	}
 
 	// Store the marshaled data in BigCache
-	return store.Cache.Set(key, data)
+	return cache.Cache.Set(key, data)
 }
 
 // Delete removes a value from the cache by its key.
@@ -110,7 +110,7 @@ func (store *Cache) Set(ctx context.Context, key string, val any) error {
 //
 // Returns:
 //   - An error if the operation fails
-func (store *Cache) Delete(ctx context.Context, key string) error {
+func (cache *Cache) Delete(ctx context.Context, key string) error {
 	// Delegate deletion to the underlying BigCache instance
-	return store.Cache.Delete(key)
+	return cache.Cache.Delete(key)
 }
