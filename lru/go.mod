@@ -1,6 +1,6 @@
 module github.com/go-leo/gouache/lru
 
-go 1.22
+go 1.20
 
 require github.com/hashicorp/golang-lru v1.0.2
 

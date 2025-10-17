@@ -1,5 +1,5 @@
 module github.com/go-leo/gouache
 
-go 1.22
+go 1.20
 
 require golang.org/x/sync v0.11.0

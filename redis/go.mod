@@ -1,6 +1,6 @@
 module github.com/go-leo/gouache/redis
 
-go 1.22
+go 1.20
 
 require github.com/redis/go-redis/v9 v9.14.0
 
