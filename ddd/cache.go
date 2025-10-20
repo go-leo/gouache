@@ -27,13 +27,13 @@ type Gopher func(f func()) error
 type options struct {
 	// DelayDuration is the time to wait before performing the second cache deletion.
 	DelayDuration time.Duration
-	
+
 	// DeleteTimeout is the timeout for the delayed delete operation.
 	DeleteTimeout time.Duration
-	
+
 	// ErrorHandler is called when an error occurs during the delayed delete operation.
 	ErrorHandler func(error)
-	
+
 	// Gopher is responsible for executing functions asynchronously.
 	Gopher Gopher
 }
@@ -133,19 +133,19 @@ func (o *options) Correct() *options {
 	if o.DelayDuration <= 0 {
 		o.DelayDuration = 500 * time.Millisecond
 	}
-	
+
 	// Set default delete timeout to 500s if not specified or invalid
 	if o.DeleteTimeout <= 0 {
 		o.DeleteTimeout = 500 * time.Second
 	}
-	
+
 	// Set default error handler if not specified
 	if o.ErrorHandler == nil {
 		o.ErrorHandler = func(err error) {
 			slog.Error("ddd.Cache.Get", slog.String("err", err.Error()))
 		}
 	}
-	
+
 	// Set default Gopher if not specified
 	if o.Gopher == nil {
 		o.Gopher = func(f func()) error {
@@ -161,10 +161,10 @@ func (o *options) Correct() *options {
 type cache struct {
 	// Options contains configuration options for the cache
 	Options *options
-	
+
 	// Cache is the underlying cache implementation
 	Cache gouache.Cache
-	
+
 	// Database is the underlying database implementation
 	Database gouache.Database
 }
@@ -197,7 +197,7 @@ func New(c gouache.Cache, d gouache.Database, opts ...Option) gouache.Cache {
 func (cache *cache) Get(ctx context.Context, key string) (any, error) {
 	// Try to get the value from cache first
 	val, err := cache.Cache.Get(ctx, key)
-	
+
 	// If cache miss, try to get from database
 	if errors.Is(err, gouache.ErrCacheMiss) {
 		// Get value from database
@@ -205,11 +205,11 @@ func (cache *cache) Get(ctx context.Context, key string) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		
+
 		// Populate cache with database value
 		return val, cache.Cache.Set(ctx, key, val)
 	}
-	
+
 	// Return cache value or error
 	return val, err
 }
@@ -230,24 +230,24 @@ func (cache *cache) Set(ctx context.Context, key string, val any) error {
 	if err := cache.Cache.Delete(ctx, key); err != nil {
 		return err
 	}
-	
+
 	// Upsert value in database
 	if err := cache.Database.Upsert(ctx, key, val); err != nil {
 		return err
 	}
-	
+
 	// Schedule delayed cache deletion to handle race conditions
 	return cache.Options.Gopher(func() {
 		// Wait for the specified delay duration
 		time.Sleep(cache.Options.DelayDuration)
-		
+
 		// Create a new context without the original cancellation
 		ctx := context.WithoutCancel(ctx)
-		
+
 		// Add timeout to the context
 		ctx, cancel := context.WithTimeout(ctx, cache.Options.DeleteTimeout)
 		defer cancel()
-		
+
 		// Perform the second cache deletion
 		if err := cache.Cache.Delete(ctx, key); err != nil {
 			cache.Options.ErrorHandler(err)
@@ -270,24 +270,24 @@ func (cache *cache) Delete(ctx context.Context, key string) error {
 	if err := cache.Cache.Delete(ctx, key); err != nil {
 		return err
 	}
-	
+
 	// Delete from database
 	if err := cache.Database.Delete(ctx, key); err != nil {
 		return err
 	}
-	
+
 	// Schedule delayed cache deletion to handle race conditions
 	return cache.Options.Gopher(func() {
 		// Wait for the specified delay duration
 		time.Sleep(cache.Options.DelayDuration)
-		
+
 		// Create a new context without the original cancellation
 		ctx := context.WithoutCancel(ctx)
-		
+
 		// Add timeout to the context
 		ctx, cancel := context.WithTimeout(ctx, cache.Options.DeleteTimeout)
 		defer cancel()
-		
+
 		// Perform the second cache deletion
 		if err := cache.Cache.Delete(ctx, key); err != nil {
 			cache.Options.ErrorHandler(err)

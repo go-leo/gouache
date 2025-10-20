@@ -1,11 +1,12 @@
 # Gouache - Go 缓存接口和实现
 
-Gouache 是一个 Go 语言缓存库，提供统一的缓存接口和多种实现方式，包括内存缓存、Redis、BigCache、LRU 等。
+Gouache 是一个 Go 语言缓存库，实现了一致性缓存方案：延迟双删模式，提供统一的缓存接口和多种实现方式，底层实现包括内存缓存（sync.Map）、Redis、BigCache、LRU 和 Go-Cache 等。
 
 ## 特性
 
 - **统一接口**: 定义了标准的 ***Cache*** 和 ***Database*** 接口
 - **多种实现**: 提供多种缓存实现，包括:
+  - 延迟双删缓存 (`ddd`)
   - 基于内存的简单实现 (`sample`)
   - 带过期时间的内存缓存 (`gocache`)
   - LRU 缓存 (`lru`)
@@ -13,7 +14,6 @@ Gouache 是一个 Go 语言缓存库，提供统一的缓存接口和多种实�
   - BigCache 高性能缓存 (`bigcache`)
   - 分片缓存 (`sharded`)
   - 防击穿缓存 (`sf`)
-  - 延迟双删缓存 (`ddd`)
 - **可扩展**: 易于添加新的缓存实现
 - **线程安全**: 所有实现都支持并发访问
 
@@ -74,6 +74,20 @@ if err != nil {
 err = cache.Delete(context.Background(), "key")
 ```
 
+
+### 延迟双删缓存
+
+```go
+import "github.com/go-leo/gouache/ddd"
+
+// 使用延迟双删模式保证缓存与数据库一致性
+cache := ddd.New(
+    memoryCache,  // 缓存实现
+    database,     // 数据库实现
+    ddd.WithDelayDuration(500*time.Millisecond), // 延迟时间
+)
+```
+
 ### Redis 实现
 
 ```go
@@ -116,19 +130,6 @@ import "github.com/go-leo/gouache/sf"
 cache := &sf.Cache{
     Cache: underlyingCache, // 任意其他缓存实现
 }
-```
-
-### 组合使用 - 延迟双删缓存
-
-```go
-import "github.com/go-leo/gouache/ddd"
-
-// 使用延迟双删模式保证缓存与数据库一致性
-cache := ddd.New(
-    memoryCache,  // 缓存实现
-    database,     // 数据库实现
-    ddd.WithDelayDuration(500*time.Millisecond), // 延迟时间
-)
 ```
 
 ## 各实现说明
